@@ -1,3 +1,4 @@
+// @flow
 import React from 'react';
 import _ from 'lodash';
 import StringUtil from '../util/StringUtil';
@@ -9,7 +10,7 @@ import ISSUE_INFO from '../../constants/ISSUE_INFO.json';
 import DIAGNOSTIC_CODE_DESCRIPTIONS from '../../constants/DIAGNOSTIC_CODE_DESCRIPTIONS.json';
 import VACOLS_DISPOSITIONS_BY_ID from '../../constants/VACOLS_DISPOSITIONS_BY_ID.json';
 
-export const associateTasksWithAppeals = (serverData = {}) => {
+export const associateTasksWithAppeals = (serverData: Object = {}) => {
   const {
     appeals: { data: appeals },
     tasks: { data: tasks }
@@ -37,7 +38,7 @@ export const associateTasksWithAppeals = (serverData = {}) => {
 *  Sort by docket date (form 9 date) oldest to
 *  newest within each group
 */
-export const sortTasks = ({ tasks = {}, appeals = {} }) => {
+export const sortTasks = ({ tasks = {}, appeals = {} }: {tasks: Object, appeals: Object}) => {
   const partitionedTasks = _.partition(tasks, (task) =>
     appeals[task.vacolsId].attributes.aod || appeals[task.vacolsId].attributes.type === 'Court Remand'
   );
@@ -48,7 +49,7 @@ export const sortTasks = ({ tasks = {}, appeals = {} }) => {
   return _.flatten(partitionedTasks);
 };
 
-export const renderAppealType = (appeal) => {
+export const renderAppealType = (appeal: Object) => {
   const {
     attributes: { aod, type }
   } = appeal;
@@ -60,7 +61,7 @@ export const renderAppealType = (appeal) => {
   </React.Fragment>;
 };
 
-export const getDecisionTypeDisplay = (decision = {}) => {
+export const getDecisionTypeDisplay = (decision: Object = {}) => {
   const {
     type: decisionType
   } = decision;
@@ -75,8 +76,8 @@ export const getDecisionTypeDisplay = (decision = {}) => {
   }
 };
 
-export const getIssueProgramDescription = (issue) => _.get(ISSUE_INFO[issue.program], 'description', '');
-export const getIssueTypeDescription = (issue) => {
+export const getIssueProgramDescription = (issue: Object) => _.get(ISSUE_INFO[issue.program], 'description', '');
+export const getIssueTypeDescription = (issue: Object) => {
   const {
     program,
     type
@@ -85,7 +86,7 @@ export const getIssueTypeDescription = (issue) => {
   return _.get(ISSUE_INFO[program].levels, `${type}.description`);
 };
 
-export const getIssueDiagnosticCodeLabel = (code) => {
+export const getIssueDiagnosticCodeLabel = (code: string) => {
   const readableLabel = DIAGNOSTIC_CODE_DESCRIPTIONS[code];
 
   if (!readableLabel) {
@@ -102,6 +103,6 @@ export const getIssueDiagnosticCodeLabel = (code) => {
  * @param {Array} issues
  * @returns {Array}
  */
-export const getUndecidedIssues = (issues) => _.filter(issues, (issue) =>
+export const getUndecidedIssues = (issues: Object) => _.filter(issues, (issue) =>
   !issue.disposition || (Number(issue.disposition) && issue.disposition in VACOLS_DISPOSITIONS_BY_ID)
 );
