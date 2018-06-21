@@ -43,10 +43,9 @@ export const sortTasks = ({ tasks = {}, appeals = {} }: {tasks: Object, appeals:
     appeals[task.vacolsId].attributes.aod || appeals[task.vacolsId].attributes.type === 'Court Remand'
   );
 
-  _.each(partitionedTasks, _.sortBy('attributes.docket_date'));
   _.each(partitionedTasks, _.reverse);
 
-  return _.flatten(partitionedTasks);
+  return partitionedTasks[0].concat(partitionedTasks[1]);
 };
 
 export const renderAppealType = (appeal: Object) => {
