@@ -1,3 +1,4 @@
+// @flow
 import React from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
@@ -7,8 +8,15 @@ import SmallLoader from '../components/SmallLoader';
 import { LOGO_COLORS } from '../constants/AppConstants';
 import { setSelectionOfTaskOfUser } from './QueueActions';
 import { sortTasks } from './utils';
+import type { State, Tasks, AttorneysOfJudge, TasksAndAppealsOfAttorney } from './reducers';
+import _ from 'lodash';
 
-const AssignedCasesPage = (props) => {
+const AssignedCasesPage = (props: {|
+  tasksAndAppealsOfAttorney: TasksAndAppealsOfAttorney,
+  attorneysOfJudge: AttorneysOfJudge,
+  tasks: Tasks,
+  match: {params: {attorneyId: string}}
+|}) => {
   const {
     match, attorneysOfJudge, tasksAndAppealsOfAttorney, tasks
   } = props;
@@ -53,11 +61,7 @@ const AssignedCasesPage = (props) => {
 };
 
 const mapStateToProps = (state) => {
-  const { tasksAndAppealsOfAttorney, attorneysOfJudge, tasks } = state.queue;
-
-  return { tasksAndAppealsOfAttorney,
-    attorneysOfJudge,
-    tasks };
+  return _.pick(state.queue, 'tasksAndAppealsOfAttorney', 'attorneysOfJudge');
 };
 
 export default connect(
