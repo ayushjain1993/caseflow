@@ -11,12 +11,7 @@ import { sortTasks } from './utils';
 import type { State, Tasks, AttorneysOfJudge, TasksAndAppealsOfAttorney } from './reducers';
 import _ from 'lodash';
 
-const AssignedCasesPage = (props: {|
-  tasksAndAppealsOfAttorney: TasksAndAppealsOfAttorney,
-  attorneysOfJudge: AttorneysOfJudge,
-  tasks: Tasks,
-  match: {params: {attorneyId: string}}
-|}) => {
+const AssignedCasesPage = (props) => {
   const {
     match, attorneysOfJudge, tasksAndAppealsOfAttorney, tasks
   } = props;
