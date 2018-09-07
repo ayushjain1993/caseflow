@@ -12,4 +12,5 @@
  *
  * Temporarly leaving https://github.com/webpack-contrib/css-loader/pull/655 gets released
  *= require _pdf_viewer.css
+ *= require _base.scss
  */
