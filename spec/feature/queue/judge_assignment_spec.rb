@@ -37,8 +37,11 @@ RSpec.feature "Judge assignment to attorney" do
       case_rows = page.find_all("tr[id^='table-row-']")
       expect(case_rows.length).to eq(2)
 
+      expect(page).to have_content(appeal_one.veteran_name)
+
       case_rows.each do |row|
         # TODO: how do we check these checkboxes?
+        row.find("div[class^='checkbox-wrapper-']").click
 
         # Approaches I tried:
         # row.find(".cf-form-checkbox").click -> does not seem to change the checkbox state.
@@ -47,6 +50,8 @@ RSpec.feature "Judge assignment to attorney" do
         # Element is not clickable. Other element would receive the click:
         # <div class="cf-form-checkbox">...</div>
       end
+
+      expect(page).to have_content("Assign 2 cases")
     end
   end
 end
