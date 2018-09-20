@@ -86,7 +86,7 @@ class AssignedCasesPage extends React.Component<Props> {
           onTaskAssignment={(params) => props.reassignTasksToUser(params)}
           selectedTasks={selectedTasks} />}
       <TaskTable
-        includeSelect
+        includeSelect={featureToggles.judge_assignment_to_attorney}
         includeDetailsLink
         includeType
         includeDocketNumber

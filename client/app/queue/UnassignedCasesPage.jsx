@@ -53,7 +53,7 @@ class UnassignedCasesPage extends React.PureComponent<Props> {
           onTaskAssignment={(params) => this.props.initialAssignTasksToUser(params)}
           selectedTasks={selectedTasks} />}
       <TaskTable
-        includeSelect
+        includeSelect={featureToggles.judge_assignment_to_attorney}
         includeDetailsLink
         includeType
         includeDocketNumber
