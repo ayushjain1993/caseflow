@@ -12,7 +12,7 @@ def sql_fmt(o)
     return "= #{o}"
   end
   if o.is_a? String
-    return "= '#{o}'"
+    return "= #{VACOLS::Decass.connection.quote(o)}"
   end
   fail o.class.to_s
   fail o.inspect
