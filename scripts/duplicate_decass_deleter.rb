@@ -63,7 +63,7 @@ end
 # rubocop:enable Metrics/AbcSize
 
 def str_of(v)
-  v.inspect
+  v
 end
 
 def json_of(r)
