@@ -5,8 +5,8 @@ def sql_fmt(o)
   if o.nil?
     return "is null"
   end
-  if o.is_a? Date
-    return "= to_date('#{o}', 'YYYY-MM-DD')"
+  if o.is_a? Time
+    return "= to_date('#{o.strftime("%Y-%m-%d %H:%M:%S")}', 'YYYY-MM-DD HH24:MI:SS')"
   end
   if o.is_a? Numeric
     return "= #{o}"
@@ -14,6 +14,7 @@ def sql_fmt(o)
   if o.is_a? String
     return "= '#{o}'"
   end
+  fail o.class.to_s
   fail o.inspect
 end
 
@@ -78,13 +79,17 @@ def diff_decass_records(r1, r2)
   }
 end
 
+def duplicate_of(r1, r2)
+  (r1.as_json.reject { |_, v| v.nil? }.to_a - r2.as_json.to_a).empty?
+end
+
 DRY_RUN = !ARGV.include?("--nodry_run")
 if !DRY_RUN
   puts "WARNING: This is NOT a dry run."
 end
 
 ["deassign", "dereceive", "deadtim", "deprogrev", "foo", "demdtim", "decomp", "dedeadline"].each do |name_column|
-  VACOLS::Decass.attribute_types["dedeadline"] = ActiveRecord::Type.lookup(:datetime)
+  VACOLS::Decass.attribute_types[name_column] = ActiveRecord::Type.lookup(:datetime)
 end
 
 defolders = VACOLS::Decass.select("defolder")
@@ -95,10 +100,39 @@ num_deleted = 0
 defolders.each do |defolder|
   puts "Processing case #{defolder}"
   VACOLS::Decass.transaction do
-    records = VACOLS::Decass.where(defolder: defolder)
-    record_first = records.take(1)[0]
+    records = VACOLS::Decass.where(defolder: defolder).to_ary.dup
+    records.sort_by! { |r| -r.as_json.values.compact.length }
+
+    record_first = records[0]
     records.drop(1).each do |r|
       puts JSON::pretty_generate(diff_decass_records(record_first, r))
+      next unless duplicate_of(r, record_first)
+
+      predicate = predicate_from_record(r, 1)
+      query_select = <<EOS.strip_heredoc
+        select 1
+        from decass
+        where #{predicate}
+EOS
+      num_found = 0
+      cursor = VACOLS::Decass.connection.execute(query_select)
+      num_found += 1 while cursor.fetch
+      unless num_found == 1
+        puts "Skipping records because query found #{num_found} instead of 1 records to "\
+          "delete."
+        next
+      end
+
+      puts "Deleting the current record"
+      query_delete = <<EOS.strip_heredoc
+        delete
+        from decass
+        where #{predicate}
+EOS
+      if !DRY_RUN
+        # VACOLS::Decass.connection.execute(query_delete)
+      end
+      num_deleted += num_found
     end
     puts
   end
