@@ -62,11 +62,29 @@ EOS
 end
 # rubocop:enable Metrics/AbcSize
 
+def str_of(v)
+  if v.is_a? Date
+    puts v.to_datetime.rfc822
+    return v.to_datetime.rfc822
+  end
+  v.inspect
+end
+
+def json_of(r)
+  r.as_json.transform_values { |v| str_of(v) }
+end
+
+def diff_decass_records(r1, r2)
+  (json_of(r1).to_a - json_of(r2).to_a).sort
+end
+
 DRY_RUN = !ARGV.include?("--nodry_run")
 if !DRY_RUN
   puts "WARNING: This is NOT a dry run."
 end
 
+puts VACOLS::Decass.attribute_types.keys
+VACOLS::Decass.attribute_types["dedeadline"] = ActiveRecord::Type.lookup(:datetime)
 defolders = VACOLS::Decass.select("defolder")
   .where("deadtim >= ?", Date.new(2018, 8, 16))
   .group("defolder").having("count(*) > 1").map(&:defolder)
@@ -76,42 +94,9 @@ defolders.each do |defolder|
   puts "Processing case #{defolder}"
   VACOLS::Decass.transaction do
     records = VACOLS::Decass.where(defolder: defolder)
-    records_with_json_rep = {}
-    records.each do |r|
-      j = r.as_json
-      if records_with_json_rep[j].nil?
-        records_with_json_rep[j] = []
-      end
-      records_with_json_rep[j].push(r)
-    end
-    records_with_json_rep.each_pair do |k, records_duplicate|
-      if records_duplicate.length == 1
-        next
-      end
-      query_select = <<EOS.strip_heredoc
-        select 1
-        from decass
-        where #{predicate_from_record(records_duplicate[0], records_duplicate.length - 1)}
-EOS
-      num_found = 0
-      cursor = VACOLS::Decass.connection.execute(query_select)
-      num_found += 1 while cursor.fetch
-      unless num_found == records_duplicate.length - 1
-        puts "Skipping records because query found #{num_found} instead of #{records_duplicate.length - 1} records to "\
-          "delete. The dates probably didn't match."
-        next
-      end
-
-      puts "Deleting #{records_duplicate.length - 1} duplicates of #{k}"
-      query_delete = <<EOS.strip_heredoc
-        delete
-        from decass
-        where #{predicate_from_record(records_duplicate[0], records_duplicate.length - 1)}
-EOS
-      if !DRY_RUN
-        VACOLS::Decass.connection.execute(query_delete)
-      end
-      num_deleted += records_duplicate.length - 1
+    record_first = records.take(1)[0]
+    records.drop(1).each do |r|
+      puts diff_decass_records(record_first, r).inspect
     end
     puts
   end
