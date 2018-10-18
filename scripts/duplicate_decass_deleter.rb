@@ -72,7 +72,7 @@ end
 
 def diff_decass_records(r1, r2)
   {
-    added: (json_of(r1).to_a - json_of(r2).to_a).sort,
+    added: (json_of(r2).to_a - json_of(r1).to_a).sort,
     removed: (json_of(r1).to_a - json_of(r2).to_a).sort
   }
 end
