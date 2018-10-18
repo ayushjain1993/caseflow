@@ -63,10 +63,6 @@ end
 # rubocop:enable Metrics/AbcSize
 
 def str_of(v)
-  if v.is_a? Date
-    puts v.to_datetime.rfc822
-    return v.to_datetime.rfc822
-  end
   v.inspect
 end
 
@@ -75,7 +71,10 @@ def json_of(r)
 end
 
 def diff_decass_records(r1, r2)
-  (json_of(r1).to_a - json_of(r2).to_a).sort
+  {
+    added: (json_of(r1).to_a - json_of(r2).to_a).sort,
+    removed: (json_of(r1).to_a - json_of(r2).to_a).sort
+  }
 end
 
 DRY_RUN = !ARGV.include?("--nodry_run")
@@ -83,8 +82,10 @@ if !DRY_RUN
   puts "WARNING: This is NOT a dry run."
 end
 
-puts VACOLS::Decass.attribute_types.keys
-VACOLS::Decass.attribute_types["dedeadline"] = ActiveRecord::Type.lookup(:datetime)
+["deassign", "dereceive", "deadtim", "deprogrev", "foo", "demdtim", "decomp", "dedeadline"].each do |name_column|
+  VACOLS::Decass.attribute_types["dedeadline"] = ActiveRecord::Type.lookup(:datetime)
+end
+
 defolders = VACOLS::Decass.select("defolder")
   .where("deadtim >= ?", Date.new(2018, 8, 16))
   .group("defolder").having("count(*) > 1").map(&:defolder)
