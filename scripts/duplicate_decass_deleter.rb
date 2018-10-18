@@ -1,4 +1,5 @@
 # bundle exec rails runner scripts/enable_features_dev.rb
+require 'json'
 
 def sql_fmt(o)
   if o.nil?
@@ -97,7 +98,7 @@ defolders.each do |defolder|
     records = VACOLS::Decass.where(defolder: defolder)
     record_first = records.take(1)[0]
     records.drop(1).each do |r|
-      puts diff_decass_records(record_first, r).inspect
+      puts JSON::pretty_generate(diff_decass_records(record_first, r))
     end
     puts
   end
