@@ -137,6 +137,22 @@ RSpec.feature "Checkout flows" do
         visit "/queue"
         click_on "#{appeal.veteran_full_name} (#{appeal.sanitized_vbms_id})"
         click_dropdown 0
+        click_label "radiation"
+
+        click_on "Continue"
+
+        # Ensure we can reload the flow and the special issue is saved
+        click_on "Cancel"
+        click_on "Yes, cancel"
+
+        click_dropdown 0
+
+        # Radiation should still be checked
+        expect(page).to have_field("radiation", checked: true, visible: false)
+
+        # Radiation should also be marked in the database
+        expect(appeal.special_issue_list.radiation).to eq(true)
+        click_on "Continue"
 
         expect(page).to have_content "Select Dispositions"
 
@@ -181,7 +197,8 @@ RSpec.feature "Checkout flows" do
         visit "/queue"
         click_on "#{appeal.veteran_full_name} (#{appeal.sanitized_vbms_id})"
         click_dropdown 0
-
+        click_on "Continue"
+        
         expect(page).to have_content("Select Dispositions")
 
         table_rows = page.find_all("tr[id^='table-row-']")
@@ -209,6 +226,8 @@ RSpec.feature "Checkout flows" do
         visit "/queue"
         click_on "#{appeal.veteran_full_name} (#{appeal.sanitized_vbms_id})"
         click_dropdown 0
+
+        click_on "Continue"
 
         issue_dispositions = page.find_all(".Select-control", text: "Select Disposition", count: appeal.issues.length)
 
@@ -284,6 +303,7 @@ RSpec.feature "Checkout flows" do
         visit "/queue"
         click_on "#{appeal.veteran_full_name} (#{appeal.sanitized_vbms_id})"
         click_dropdown 0
+        click_on "Continue"
 
         expect(page).to have_content("Select Dispositions")
 
@@ -342,7 +362,7 @@ RSpec.feature "Checkout flows" do
         visit "/queue"
         click_on "#{appeal.veteran_full_name} (#{appeal.sanitized_vbms_id})"
         click_dropdown 0
-
+        click_on "Continue"
         expect(page).to have_content("Select Dispositions")
 
         safe_click("a[href='/queue/appeals/#{appeal.vacols_id}/draft_decision/dispositions/edit/1']")
@@ -372,6 +392,7 @@ RSpec.feature "Checkout flows" do
         visit "/queue"
         click_on "#{appeal.veteran_full_name} (#{appeal.sanitized_vbms_id})"
         click_dropdown 0
+        click_on "Continue"
 
         expect(page).to have_content "Select Dispositions"
 
@@ -393,7 +414,7 @@ RSpec.feature "Checkout flows" do
         visit "/queue"
         click_on "#{appeal.veteran_full_name} (#{appeal.sanitized_vbms_id})"
         click_dropdown 0
-
+        click_on "Continue"
         expect(page).to have_content "Select Dispositions"
 
         click_on "Add Issue"
@@ -557,11 +578,31 @@ RSpec.feature "Checkout flows" do
           expect(visible_options.first.text).to eq COPY::JUDGE_CHECKOUT_DISPATCH_LABEL
         end
 
+        click_label "mustardGas"
+
+        click_on "Continue"
+
+        # Ensure we can reload the flow and the special issue is saved
+        click_on "Cancel"
+        click_on "Yes, cancel"
+
+        click_dropdown 0
+
+        # Radiation should still be checked
+        expect(page).to have_field("mustardGas", checked: true, visible: false)
+
+        # Radiation should also be marked in the database
+        expect(appeal.special_issue_list.mustard_gas).to eq(true)
+        click_on "Continue"
+
         # one issue is decided, excluded from checkout flow
         expect(appeal.issues.length).to eq 2
+
+        expect(page).to have_content "Review Dispositions"
         expect(page.find_all(".issue-disposition-dropdown").length).to eq 1
 
         click_on "Continue"
+
         expect(page).to have_content("Evaluate Decision")
 
         click_on "Continue"
