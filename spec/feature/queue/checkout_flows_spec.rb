@@ -198,7 +198,7 @@ RSpec.feature "Checkout flows" do
         click_on "#{appeal.veteran_full_name} (#{appeal.sanitized_vbms_id})"
         click_dropdown 0
         click_on "Continue"
-        
+
         expect(page).to have_content("Select Dispositions")
 
         table_rows = page.find_all("tr[id^='table-row-']")
