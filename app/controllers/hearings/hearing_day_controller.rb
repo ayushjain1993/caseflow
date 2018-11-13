@@ -45,14 +45,21 @@ class Hearings::HearingDayController < HearingScheduleController
   def index_with_hearings
     regional_office = HearingDayMapper.validate_regional_office(params[:regional_office])
 
-    enriched_hearings = HearingDay.load_days_with_open_hearing_slots(Time.zone.today.beginning_of_day,
-                                                                     Time.zone.today.beginning_of_day + 182.days,
-                                                                     regional_office)
-    enriched_hearings.each do |hearing_day|
-      hearing_day[:hearings] = hearing_day[:hearings].map { |hearing| hearing.to_hash(current_user.id) }
-    end
+    hearings = HearingDayRepository.load_days_with_open_hearings_slots(
+      Time.zone.today.beginning_of_day,
+      Time.zone.today.beginning_of_day + 182.days
+    )
 
-    render json: { hearing_days: json_hearings(enriched_hearings) }
+    render json: { hearing_days: json_hearings(hearings) }
+
+    # enriched_hearings = HearingDay.load_days_with_open_hearing_slots(Time.zone.today.beginning_of_day,
+    #                                                                  Time.zone.today.beginning_of_day + 182.days,
+    #                                                                  regional_office)
+    # enriched_hearings.each do |hearing_day|
+    #   hearing_day[:hearings] = hearing_day[:hearings].map { |hearing| hearing.to_hash(current_user.id) }
+    # end
+    #
+    # render json: { hearing_days: json_hearings(enriched_hearings) }
   end
 
   def veterans_ready_for_hearing
