@@ -78,6 +78,17 @@ class VACOLS::CaseHearing < VACOLS::Record
                             (parent_hearing_date + 1.day).to_date)
     end
 
+    def hearings_for_master_records(hearing_days)
+      keys = hearing_days.select{ |d| !d[:regional_office].nil? }.map { |d| d[:hearing_pkseq] }
+      central_dates = hearing_days.select{ |d| d[:regional_office].nil? }.map { |d| VacolsHelper.day_only_str(d[:hearing_date]) }
+      select_hearings.where("
+        vdkey IN (?)
+        OR (
+          hearing_type = 'C' and folder_nr NOT LIKE '%VIDEO%' AND trunc(hearing_date) IN (?)
+        )
+      ", keys, central_dates)
+    end
+
     def for_appeal(appeal_vacols_id)
       select_hearings.where(folder_nr: appeal_vacols_id)
     end
@@ -139,8 +150,6 @@ class VACOLS::CaseHearing < VACOLS::Record
       end
     end
 
-    private
-
     def select_hearings
       # VACOLS overloads the HEARSCHED table with other types of hearings
       # that work differently. Filter those out.
@@ -169,13 +178,13 @@ class VACOLS::CaseHearing < VACOLS::Record
              "CASE WHEN folder_nr LIKE 'VIDEO%' or folder_nr is null THEN folder_nr ELSE null END AS folder_nr",
              :room,
              :board_member,
-             "snamel as judge_last_name",
-             "snamemi as judge_middle_name",
-             "snamef as judge_first_name",
-             "snamel || CASE WHEN snamel IS NULL THEN '' ELSE ', ' END || snamef AS judge_name",
+             "staff.snamel as judge_last_name",
+             "staff.snamemi as judge_middle_name",
+             "staff.snamef as judge_first_name",
+             "staff.snamel || CASE WHEN staff.snamel IS NULL THEN '' ELSE ', ' END || staff.snamef AS judge_name",
              :mduser,
              :mdtime)
-        .joins("left outer join vacols.staff on staff.sattyid = board_member")
+        .joins("left outer join vacols.staff staff on staff.sattyid = board_member")
         .where("hearing_type = ? and (folder_nr != ? or folder_nr is null)", "C", "1779233")
     end
   end
