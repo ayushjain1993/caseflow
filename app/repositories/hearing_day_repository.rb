@@ -92,11 +92,10 @@ class HearingDayRepository
 
     def load_days_with_open_hearings_slots(start_date, end_date)
       hearing_days = fetch_days_with_open_hearings_slots(start_date, end_date)
-      hearings_by_day = HearingRepository.fetch_hearings_for_parents(hearing_days).group_by { | h | h[:hearing_pkseq] }
-
+      hearings_by_day = HearingRepository.fetch_hearings_for_parents(hearing_days).group_by { | h | h[:vacols_id] }
       hearing_days = hearing_days.each_with_object([]) do |_day, result|
         day = to_canonical_hash(_day)
-        day[:hearings] = hearings_by_day[day[:hearing_pkseq]]
+        day[:hearings] = hearings_by_day[_day[:hearing_pkseq].to_s]
         result << day
       end
 
