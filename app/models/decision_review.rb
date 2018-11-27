@@ -9,6 +9,7 @@ class DecisionReview < ApplicationRecord
   attr_reader :saving_review
 
   has_many :request_issues, as: :review_request
+  has_many :request_issues_updates, foreign_key: :review_id
   has_many :claimants, as: :review_request
   has_many :decision_issues, as: :decision_review
 
@@ -57,7 +58,9 @@ class DecisionReview < ApplicationRecord
       legacyAppeals: serialized_legacy_appeals,
       ratings: serialized_ratings,
       requestIssues: request_issues.map(&:ui_hash),
-      contestableIssuesByDate: serialized_contestable_issues_by_date
+      contestableIssuesByDate: serialized_contestable_issues_by_date,
+      issuesAfter: request_issues_updates.last.after_issues.map(&:ui_hash),
+      issuesBefore: request_issues_updates.last.before_issues.map(&:ui_hash)
     }
   end
 

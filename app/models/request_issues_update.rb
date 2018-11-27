@@ -68,6 +68,14 @@ class RequestIssuesUpdate < ApplicationRecord
     before_issues - after_issues
   end
 
+  def before_issues
+    @before_issues ||= before_request_issue_ids ? fetch_before_issues : calculate_before_issues
+  end
+
+  def after_issues
+    @after_issues ||= after_request_issue_ids ? fetch_after_issues : calculate_after_issues
+  end
+
   private
 
   def changes?
@@ -76,14 +84,6 @@ class RequestIssuesUpdate < ApplicationRecord
 
   def new_issues
     after_issues.reject(&:persisted?)
-  end
-
-  def before_issues
-    @before_issues ||= before_request_issue_ids ? fetch_before_issues : calculate_before_issues
-  end
-
-  def after_issues
-    @after_issues ||= after_request_issue_ids ? fetch_after_issues : calculate_after_issues
   end
 
   def calculate_after_issues
