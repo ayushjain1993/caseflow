@@ -2,24 +2,58 @@ require "rails_helper"
 
 describe RatingIssue do
   before do
-    FeatureToggle.enable!(:test_facols)
+    Time.zone = "UTC"
     Timecop.freeze(Time.utc(2015, 1, 1, 12, 0, 0))
   end
 
-  after do
-    FeatureToggle.disable!(:test_facols)
+  let(:profile_date) { Time.zone.today - 30 }
+  let(:promulgation_date) { Time.zone.today - 30 }
+  let(:profile_date) { Time.zone.today - 40 }
+
+  context ".deserialize" do
+    subject { RatingIssue.deserialize(rating_issue.serialize) }
+
+    let(:rating_issue) do
+      RatingIssue.new(
+        reference_id: "NBA",
+        participant_id: "123",
+        profile_date: profile_date,
+        promulgation_date: promulgation_date,
+        decision_text: "This broadcast may not be reproduced",
+        associated_end_products: [],
+        rba_contentions_data: [{}]
+      )
+    end
+
+    it { is_expected.to be_a(RatingIssue) }
+
+    it do
+      is_expected.to have_attributes(
+        reference_id: "NBA",
+        participant_id: "123",
+        profile_date: profile_date,
+        promulgation_date: promulgation_date,
+        decision_text: "This broadcast may not be reproduced",
+        rba_contentions_data: [{}]
+      )
+    end
   end
 
-  let(:promulgation_date) { Time.zone.today - 30 }
-
   context ".from_bgs_hash" do
-    subject { RatingIssue.from_bgs_hash(bgs_record) }
+    subject { RatingIssue.from_bgs_hash(rating, bgs_record) }
+
+    let!(:rating) do
+      Generators::Rating.build(
+        participant_id: "123",
+        promulgation_date: promulgation_date,
+        profile_date: profile_date
+      )
+    end
 
     let(:bgs_record) do
       {
         rba_issue_id: "NBA",
-        decn_txt: "This broadcast may not be reproduced",
-        promulgation_date: promulgation_date
+        decn_txt: "This broadcast may not be reproduced"
       }
     end
 
@@ -29,7 +63,7 @@ describe RatingIssue do
       is_expected.to have_attributes(
         reference_id: "NBA",
         decision_text: "This broadcast may not be reproduced",
-        profile_date: nil,
+        profile_date: profile_date,
         contention_reference_id: nil
       )
     end
@@ -47,7 +81,7 @@ describe RatingIssue do
         is_expected.to have_attributes(
           reference_id: "NBA",
           decision_text: "This broadcast may not be reproduced",
-          profile_date: Time.zone.now,
+          profile_date: profile_date,
           contention_reference_id: "foul"
         )
       end
@@ -66,14 +100,14 @@ describe RatingIssue do
         is_expected.to have_attributes(
           reference_id: "NBA",
           decision_text: "This broadcast may not be reproduced",
-          profile_date: Time.zone.now,
+          profile_date: profile_date,
           contention_reference_id: "foul"
         )
       end
     end
   end
 
-  context "#in_active_review" do
+  context "#title_of_active_review" do
     before do
       Timecop.freeze(Time.utc(2018, 1, 1, 12, 0, 0))
     end
@@ -105,7 +139,7 @@ describe RatingIssue do
       request_issue
       rating_issue = RatingIssue.new(reference_id: reference_id)
 
-      expect(rating_issue.in_active_review).to eq("Supplemental Claim")
+      expect(rating_issue.title_of_active_review).to eq("Supplemental Claim")
     end
 
     context "removed issue" do
@@ -115,7 +149,7 @@ describe RatingIssue do
         request_issue
         rating_issue = RatingIssue.new(reference_id: reference_id)
 
-        expect(rating_issue.in_active_review).to be_nil
+        expect(rating_issue.title_of_active_review).to be_nil
       end
     end
 
@@ -123,55 +157,42 @@ describe RatingIssue do
       request_issue
       rating_issue = RatingIssue.new(reference_id: "something-else")
 
-      expect(rating_issue.in_active_review).to be_nil
+      expect(rating_issue.title_of_active_review).to be_nil
     end
 
     it "returns nil if similar RequestIssue exists for inactive EPE" do
       inactive_request_issue
       rating_issue = RatingIssue.new(reference_id: reference_id)
 
-      expect(rating_issue.in_active_review).to be_nil
+      expect(rating_issue.title_of_active_review).to be_nil
     end
   end
 
-  context "#save_with_request_issue!" do
+  context "#source_higher_level_review" do
+    before do
+      Timecop.freeze(Time.utc(2018, 1, 1, 12, 0, 0))
+    end
+
+    let(:reference_id) { "abc123" }
     let(:contention_ref_id) { 123 }
-    let(:participant_id) { 456 }
-
-    let!(:request_issue) { create(:request_issue, contention_reference_id: contention_ref_id) }
-
+    let!(:request_issue) do
+      create(
+        :request_issue,
+        rating_issue_reference_id: reference_id,
+        rating_issue_profile_date: Time.zone.today,
+        contention_reference_id: contention_ref_id,
+        review_request: create(:higher_level_review)
+      )
+    end
     subject do
       RatingIssue.new(
-        reference_id: "ref-id",
-        profile_date: Time.zone.today,
-        contention_reference_id: contention_ref_id,
-        promulgation_date: promulgation_date,
-        participant_id: participant_id
+        reference_id: reference_id,
+        rba_contentions_data: [{ cntntn_id: contention_ref_id }]
       )
     end
 
-    it "matches based on contention_reference_id" do
-      expect(subject.id).to be_nil
-
-      subject.save_with_request_issue!
-
-      expect(subject.request_issue).to eq(request_issue)
-      expect(subject.id).to_not be_nil
-    end
-
-    it "does not save duplicates" do
-      rating_issue = RatingIssue.new(
-        reference_id: "ref-id",
-        profile_date: Time.zone.today,
-        promulgation_date: promulgation_date,
-        participant_id: participant_id,
-        request_issue_id: request_issue.id
-      )
-
-      rating_issue.save!
-      subject.save_with_request_issue!
-
-      expect(subject.id).to eq(rating_issue.id)
+    it "flags request_issue as having a previous higher level review" do
+      expect(subject.source_higher_level_review).to eq(request_issue.id)
     end
   end
 end

@@ -1,8 +1,4 @@
 class Organizations::UsersController < OrganizationsController
-  before_action :verify_organization_access
-  before_action :verify_role_access
-  before_action :verify_feature_access
-
   def index
     respond_to do |format|
       format.html { render template: "queue/index" }
@@ -31,6 +27,16 @@ class Organizations::UsersController < OrganizationsController
     OrganizationsUser.remove_user_from_organization(user_to_modify, organization)
 
     render json: { users: json_users([user_to_modify]) }, status: 200
+  end
+
+  def verify_organization_access
+    redirect_to "/unauthorized" unless current_user.admin? || current_user.administered_teams.include?(organization)
+  end
+
+  def verify_role_access
+    return if current_user.admin?
+
+    super
   end
 
   private

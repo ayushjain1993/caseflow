@@ -209,6 +209,10 @@ class User < ApplicationRecord
     self.class.appeal_repository.load_user_case_assignments_from_vacols(css_id)
   end
 
+  def administered_teams
+    organizations_users.select(&:admin?).map(&:organization)
+  end
+
   def judge_css_id
     Constants::AttorneyJudgeTeams::JUDGES[Rails.current_env].each_pair do |id, value|
       return id if value[:attorneys].include?(css_id)
@@ -222,6 +226,10 @@ class User < ApplicationRecord
 
   def user_info_for_idt
     self.class.user_repository.user_info_for_idt(css_id)
+  end
+
+  def selectable_organizations
+    organizations.select(&:selectable_in_queue?)
   end
 
   private
@@ -252,8 +260,6 @@ class User < ApplicationRecord
   end
 
   class << self
-    attr_writer :appeal_repository
-    attr_writer :user_repository
     attr_writer :authentication_service
     delegate :authenticate_vacols, to: :authentication_service
 
@@ -275,7 +281,7 @@ class User < ApplicationRecord
 
     def system_user
       @system_user ||= find_or_initialize_by(
-        station_id: "283",
+        station_id: Rails.deploy_env?(:prod) ? "283" : "317",
         css_id: Rails.deploy_env?(:prod) ? "CSFLOW" : "CASEFLOW1"
       )
     end
@@ -303,13 +309,11 @@ class User < ApplicationRecord
     end
 
     def appeal_repository
-      return AppealRepository if FeatureToggle.enabled?(:test_facols)
-      @appeal_repository ||= AppealRepository
+      AppealRepository
     end
 
     def user_repository
-      return UserRepository if FeatureToggle.enabled?(:test_facols)
-      @user_repository ||= UserRepository
+      UserRepository
     end
   end
 end

@@ -7,10 +7,11 @@ module Asyncable
   extend ActiveSupport::Concern
 
   # class methods to scope queries based on class-defined columns
-  # we expect 3 column types:
+  # we expect 4 column types:
   #  * submitted_at : make the job eligible to run
   #  * attempted_at : flag the job as having run
   #  * processed_at : flag the job as concluded
+  #  * error        : any error message captured from a failed attempt.
   # These column names can be overridden in consuming classes as needed.
   class_methods do
     REQUIRES_PROCESSING_WINDOW_DAYS = 4
@@ -65,6 +66,10 @@ module Asyncable
         .where(arel_table[submitted_at_column].lteq(REQUIRES_PROCESSING_WINDOW_DAYS.days.ago))
         .order_by_oldest_submitted
     end
+
+    def run_async?
+      !Rails.env.development? && !Rails.env.test?
+    end
   end
 
   def submit_for_processing!
@@ -83,6 +88,14 @@ module Asyncable
     !!self[self.class.processed_at_column]
   end
 
+  def attempted?
+    !!self[self.class.attempted_at_column]
+  end
+
+  def submitted?
+    !!self[self.class.submitted_at_column]
+  end
+
   def clear_error!
     update!(self.class.error_column => nil)
   end
@@ -94,6 +107,6 @@ module Asyncable
   private
 
   def run_async?
-    !Rails.env.development? && !Rails.env.test?
+    self.class.run_async?
   end
 end

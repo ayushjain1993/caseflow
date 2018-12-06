@@ -28,17 +28,6 @@ describe GenericTask do
       end
     end
 
-    context "when task is assigned to a VSO the user is a member of" do
-      let(:vso) { Vso.find(FactoryBot.create(:vso).id) }
-      let(:task) { GenericTask.find(FactoryBot.create(:generic_task, assigned_to: vso).id) }
-      let(:user) { FactoryBot.create(:user) }
-      let(:expected_actions) { [Constants.TASK_ACTIONS.MARK_COMPLETE.to_h] }
-      before { allow_any_instance_of(Vso).to receive(:user_has_access?).and_return(true) }
-      it "should return only mark complete actions" do
-        expect(subject).to eq(expected_actions)
-      end
-    end
-
     context "when task is assigned to an organization the user is a member of" do
       let(:org) { Organization.find(FactoryBot.create(:organization).id) }
       let(:task) { GenericTask.find(FactoryBot.create(:generic_task, assigned_to: org).id) }
@@ -57,28 +46,40 @@ describe GenericTask do
     end
   end
 
+  describe ".available_actions_unwrapper" do
+    let(:user) { FactoryBot.create(:user) }
+    let(:task) { GenericTask.find(FactoryBot.create(:generic_task, assigned_to: assignee, status: status).id) }
+    subject { task.available_actions_unwrapper(user) }
+
+    context "when task assigned to the user is has been completed" do
+      let(:assignee) { user }
+      let(:status) { Constants.TASK_STATUSES.completed }
+      let(:expected_actions) { [] }
+      it "should return an empty list" do
+        expect(subject).to eq(expected_actions)
+      end
+    end
+
+    context "when task assigned to an organization the user is a member of is on hold" do
+      let(:assignee) { Organization.find(FactoryBot.create(:organization).id) }
+      let(:status) { Constants.TASK_STATUSES.on_hold }
+      let(:expected_actions) { [] }
+      before { allow_any_instance_of(Organization).to receive(:user_has_access?).and_return(true) }
+      it "should return an empty list" do
+        expect(subject).to eq(expected_actions)
+      end
+    end
+  end
+
   describe ".verify_user_access!" do
     let(:user) { FactoryBot.create(:user) }
     let(:other_user) { FactoryBot.create(:user) }
-
     let(:org) { FactoryBot.create(:organization) }
-    let(:field) { "sdept" }
-    let(:fld_val) { org.name }
-    let!(:sfo) { StaffFieldForOrganization.create!(organization: org, name: field, values: [fld_val]) }
-
     let(:other_org) { FactoryBot.create(:organization) }
-    let!(:other_sfo) do
-      StaffFieldForOrganization.create!(organization: other_org, name: field, values: [other_org.name])
-    end
-
-    let(:task) do
-      t = FactoryBot.create(:generic_task, :in_progress, assigned_to: assignee)
-      GenericTask.find(t.id)
-    end
+    let(:task) { GenericTask.find(FactoryBot.create(:generic_task, :in_progress, assigned_to: assignee).id) }
 
     before do
-      FactoryBot.create(:staff, user: user, "#{field}": fld_val)
-      FeatureToggle.enable!(org.feature.to_sym, users: [user.css_id])
+      OrganizationsUser.add_user_to_organization(user, org)
     end
 
     context "task assignee is current user" do
@@ -113,13 +114,7 @@ describe GenericTask do
   describe ".update_from_params" do
     let(:user) { FactoryBot.create(:user) }
     let(:org) { FactoryBot.create(:organization) }
-    let(:field) { "sdept" }
-    let(:fld_val) { org.name }
-    let!(:sfo) { StaffFieldForOrganization.create!(organization: org, name: field, values: [fld_val]) }
-    let(:task) do
-      t = FactoryBot.create(:generic_task, :in_progress, assigned_to: assignee)
-      GenericTask.find(t.id)
-    end
+    let(:task) { GenericTask.find(FactoryBot.create(:generic_task, :in_progress, assigned_to: assignee).id) }
 
     context "task is assigned to an organization" do
       let(:assignee) { org }
@@ -134,8 +129,7 @@ describe GenericTask do
 
       context "and current user belongs to that organization" do
         before do
-          FactoryBot.create(:staff, user: user, "#{field}": fld_val)
-          FeatureToggle.enable!(org.feature.to_sym, users: [user.css_id])
+          OrganizationsUser.add_user_to_organization(user, org)
         end
 
         it "should call Task.mark_as_complete!" do
@@ -264,13 +258,7 @@ describe GenericTask do
 
     context "when parent task is assigned to an organization" do
       let(:org) { FactoryBot.create(:organization) }
-      let(:field) { "sdept" }
-      let(:fld_val) { org.name }
-      let!(:sfo) { StaffFieldForOrganization.create!(organization: org, name: field, values: [fld_val]) }
-      let(:parent) do
-        t = FactoryBot.create(:generic_task, :in_progress, assigned_to: org)
-        GenericTask.find(t.id)
-      end
+      let(:parent) { GenericTask.find(FactoryBot.create(:generic_task, :in_progress, assigned_to: org).id) }
 
       context "when there is no current user" do
         it "should raise error and not create the child task nor update status" do
@@ -282,8 +270,7 @@ describe GenericTask do
 
       context "when there is a currently logged-in user" do
         before do
-          FactoryBot.create(:staff, user: current_user, "#{field}": fld_val)
-          FeatureToggle.enable!(org.feature.to_sym, users: [current_user.css_id])
+          OrganizationsUser.add_user_to_organization(current_user, org)
         end
         it "should create child task assigned by currently logged-in user" do
           child = GenericTask.create_many_from_params(good_params_array, current_user).first
@@ -351,6 +338,25 @@ describe GenericTask do
 
         task.reload
         expect(task.children.length).to eq(completed_children_cnt)
+      end
+    end
+  end
+
+  describe ".verify_org_task_unique" do
+    context "when attempting to create two tasks for different appeals assigned to the same organization" do
+      let(:organization) { FactoryBot.create(:organization) }
+      let(:appeals) { FactoryBot.create_list(:appeal, 2) }
+      it "should succeed" do
+        expect do
+          appeals.each do |a|
+            root_task = RootTask.create(appeal: a)
+            GenericTask.create!(
+              assigned_to: organization,
+              parent_id: root_task.id,
+              appeal: a
+            )
+          end
+        end.to_not raise_error
       end
     end
   end
