@@ -58,9 +58,7 @@ class DecisionReview < ApplicationRecord
       legacyAppeals: serialized_legacy_appeals,
       ratings: serialized_ratings,
       requestIssues: request_issues.map(&:ui_hash),
-      contestableIssuesByDate: serialized_contestable_issues_by_date,
-      issuesAfter: request_issues_updates.last.after_issues.map(&:ui_hash),
-      issuesBefore: request_issues_updates.last.before_issues.map(&:ui_hash)
+      contestableIssuesByDate: serialized_contestable_issues_by_date
     }
   end
 
